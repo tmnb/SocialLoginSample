@@ -10,22 +10,28 @@
 
 #import "STTwitter.h"
 #import "Accounts/Accounts.h"
+#import "Social/Social.h"
 
 static NSString *const TwitterConsumerKey = @"";
 static NSString *const TwitterConsumerSecret = @"";
 
+static NSString *const FaceBookAppID = @"";
+
 @interface ViewController () <UIActionSheetDelegate>
-@property (nonatomic) NSArray *twitterAccounts;
+@property(nonatomic) NSArray *twitterAccounts;
+@property(weak, nonatomic) IBOutlet UIImageView *profileImageView;
 @end
 
 @implementation ViewController
-            
-- (void)viewDidLoad {
+
+- (void)viewDidLoad
+{
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
 }
 
-- (void)didReceiveMemoryWarning {
+- (void)didReceiveMemoryWarning
+{
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
 }
@@ -65,12 +71,13 @@ static NSString *const TwitterConsumerSecret = @"";
                                                        [self requestTwitterAuthAccessTokenWithAccount:account];
                                                    }
                                                } else {
-                                                    NSLog(@"error %@", error.description);
+                                                   NSLog(@"error %@", error.description);
                                                }
                                            });
                                        }];
 
 }
+
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
 {
     ACAccount *account = _twitterAccounts[buttonIndex];
@@ -89,19 +96,57 @@ static NSString *const TwitterConsumerSecret = @"";
         [twitterAPIOS verifyCredentialsWithSuccessBlock:^(NSString *username) {
             [twitterAPIOS postReverseAuthAccessTokenWithAuthenticationHeader:authenticationHeader
                                                                 successBlock:^(NSString *oAuthToken,
-                                                                               NSString *oAuthTokenSecret,
-                                                                               NSString *userID,
-                                                                               NSString *screenName) {
+                                                                        NSString *oAuthTokenSecret,
+                                                                        NSString *userID,
+                                                                        NSString *screenName) {
                                                                     NSLog(@"Token %@ secret %@ userID %@ screenName %@", oAuthToken, oAuthTokenSecret, userID, screenName);
                                                                 } errorBlock:^(NSError *error) {
-                                                                    NSLog(@"postReverseAuthAccessTokenWithAuthenticationHeader error %@", error.description);
-                                                                }];
-        } errorBlock:^(NSError *error) {
+                        NSLog(@"postReverseAuthAccessTokenWithAuthenticationHeader error %@", error.description);
+                    }];
+        }                                    errorBlock:^(NSError *error) {
             NSLog(@"verifyCredentialsWithSuccessBlock erroe %@", error.description);
         }];
-    } errorBlock:^(NSError *error) {
+    }                          errorBlock:^(NSError *error) {
         NSLog(@"postReverseOAuthTokenRequest error %@", error.description);
     }];
 }
+
+- (IBAction)facebookLoginButtonTapped:(id)sender
+{
+    ACAccountStore *accountStore = [[ACAccountStore alloc] init];
+    ACAccountType *accountType = [accountStore accountTypeWithAccountTypeIdentifier:ACAccountTypeIdentifierFacebook];
+
+    NSDictionary *options = @{
+        ACFacebookAppIdKey : FaceBookAppID,
+        ACFacebookPermissionsKey : @[@"email"]
+    };
+
+    [accountStore requestAccessToAccountsWithType:accountType
+                                          options:options
+                                       completion:^(BOOL granted, NSError *error) {
+                                           if (granted) {
+                                               NSArray *accounts = [accountStore accountsWithAccountType:accountType];
+                                               ACAccount *anAccount = [accounts lastObject];
+
+                                               SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeFacebook
+                                                                                       requestMethod:SLRequestMethodGET
+                                                                                                 URL:[[NSURL alloc] initWithString:@"https://graph.facebook.com/me/picture"] parameters:@{@"type":@"large"}];
+                                               request.account = anAccount;
+                                               [request performRequestWithHandler:^(NSData *responseData, NSHTTPURLResponse *urlResponse, NSError *error) {
+
+                                                   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                                                       __block UIImage *profileImage = [[UIImage alloc] initWithData:responseData];
+                                                       dispatch_async(dispatch_get_main_queue(), ^{
+                                                           [self.profileImageView setImage:profileImage];
+                                                       });
+                                                   });
+                                               }];
+                                           }
+                                           else {
+                                               NSLog(@"error: %@", [error description]);
+                                           }
+                                       }];
+}
+
 
 @end
