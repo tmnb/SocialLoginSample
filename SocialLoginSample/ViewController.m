@@ -20,6 +20,7 @@ static NSString *const FaceBookAppID = @"";
 @interface ViewController () <UIActionSheetDelegate>
 @property(nonatomic) NSArray *twitterAccounts;
 @property(weak, nonatomic) IBOutlet UIImageView *profileImageView;
+@property (weak, nonatomic) IBOutlet UILabel *oAuthTokenLabel;
 @end
 
 @implementation ViewController
@@ -124,27 +125,34 @@ static NSString *const FaceBookAppID = @"";
     [accountStore requestAccessToAccountsWithType:accountType
                                           options:options
                                        completion:^(BOOL granted, NSError *error) {
-                                           if (granted) {
-                                               NSArray *accounts = [accountStore accountsWithAccountType:accountType];
-                                               ACAccount *anAccount = [accounts lastObject];
-
-                                               SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeFacebook
-                                                                                       requestMethod:SLRequestMethodGET
-                                                                                                 URL:[[NSURL alloc] initWithString:@"https://graph.facebook.com/me/picture"] parameters:@{@"type":@"large"}];
-                                               request.account = anAccount;
-                                               [request performRequestWithHandler:^(NSData *responseData, NSHTTPURLResponse *urlResponse, NSError *error) {
-
-                                                   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                                                       __block UIImage *profileImage = [[UIImage alloc] initWithData:responseData];
-                                                       dispatch_async(dispatch_get_main_queue(), ^{
-                                                           [self.profileImageView setImage:profileImage];
-                                                       });
-                                                   });
-                                               }];
+                                           if (!granted) {
+                                               NSLog(@"error: %@", error.description);
+                                               return;
                                            }
-                                           else {
-                                               NSLog(@"error: %@", [error description]);
-                                           }
+
+                                           NSArray *accounts = [accountStore accountsWithAccountType:accountType];
+                                           ACAccount *faceBookAccount = accounts.lastObject;
+
+                                           ACAccountCredential *facebookCredential = faceBookAccount.credential;
+                                           NSString *accessToken = facebookCredential.oauthToken;
+
+                                           SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeFacebook
+                                                                                   requestMethod:SLRequestMethodGET
+                                                                                             URL:[[NSURL alloc] initWithString:@"https://graph.facebook.com/me/picture"]
+                                                                                      parameters:@{@"type":@"large"}];
+                                           request.account = faceBookAccount;
+                                           [request performRequestWithHandler:^(NSData *responseData, NSHTTPURLResponse *urlResponse, NSError *error) {
+                                               if (error) {
+                                                   NSLog(@"error: %@", error.description);
+                                                   return;
+                                               }
+                                               UIImage *profileImage = [[UIImage alloc] initWithData:responseData];
+                                               dispatch_async(dispatch_get_main_queue(), ^{
+                                                   self.oAuthTokenLabel.text = accessToken;
+                                                   self.profileImageView.image = profileImage;
+                                               });
+                                           }];
+
                                        }];
 }
 
