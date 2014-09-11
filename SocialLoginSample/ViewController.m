@@ -82,16 +82,15 @@ static NSString *const FaceBookAppID = @"";
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
 {
     ACAccount *account = _twitterAccounts[buttonIndex];
+
     [self requestTwitterAuthAccessTokenWithAccount:account];
 }
-
 
 - (void)requestTwitterAuthAccessTokenWithAccount:(ACAccount *)account
 {
     STTwitterAPI *twitter = [STTwitterAPI twitterAPIWithOAuthConsumerName:nil
                                                               consumerKey:TwitterConsumerKey
                                                            consumerSecret:TwitterConsumerSecret];
-
 
     [twitter postReverseOAuthTokenRequest:^(NSString *authenticationHeader) {
         STTwitterAPI *twitterAPIOS = [STTwitterAPI twitterAPIOSWithAccount:account];
@@ -110,17 +109,17 @@ static NSString *const FaceBookAppID = @"";
                                                                             self.profileImageView.image = image;
                                                                         });
                                                                     } errorBlock:^(NSError *error) {
-
+                                                                        NSLog(@"error %@", error.description);
                                                                     }];
 
 
                                                                 } errorBlock:^(NSError *error) {
-                        NSLog(@"postReverseAuthAccessTokenWithAuthenticationHeader error %@", error.description);
-                    }];
-        }                                    errorBlock:^(NSError *error) {
+                                                                    NSLog(@"postReverseAuthAccessTokenWithAuthenticationHeader error %@", error.description);
+                                                                }];
+        } errorBlock:^(NSError *error) {
             NSLog(@"verifyCredentialsWithSuccessBlock erroe %@", error.description);
         }];
-    }                          errorBlock:^(NSError *error) {
+    } errorBlock:^(NSError *error) {
         NSLog(@"postReverseOAuthTokenRequest error %@", error.description);
     }];
 }
@@ -143,11 +142,7 @@ static NSString *const FaceBookAppID = @"";
                                                return;
                                            }
 
-                                           NSArray *accounts = [accountStore accountsWithAccountType:accountType];
-                                           ACAccount *faceBookAccount = accounts.lastObject;
-
-                                           ACAccountCredential *facebookCredential = faceBookAccount.credential;
-                                           NSString *accessToken = facebookCredential.oauthToken;
+                                           ACAccount *faceBookAccount = [accountStore accountsWithAccountType:accountType].lastObject;
 
                                            SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeFacebook
                                                                                    requestMethod:SLRequestMethodGET
@@ -161,7 +156,7 @@ static NSString *const FaceBookAppID = @"";
                                                }
                                                UIImage *profileImage = [[UIImage alloc] initWithData:responseData];
                                                dispatch_async(dispatch_get_main_queue(), ^{
-                                                   self.oAuthTokenLabel.text = accessToken;
+                                                   self.oAuthTokenLabel.text = faceBookAccount.credential.oauthToken;
                                                    self.profileImageView.image = profileImage;
                                                });
                                            }];
