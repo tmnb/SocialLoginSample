@@ -92,6 +92,7 @@ static NSString *const FaceBookAppID = @"";
                                                               consumerKey:TwitterConsumerKey
                                                            consumerSecret:TwitterConsumerSecret];
 
+
     [twitter postReverseOAuthTokenRequest:^(NSString *authenticationHeader) {
         STTwitterAPI *twitterAPIOS = [STTwitterAPI twitterAPIOSWithAccount:account];
         [twitterAPIOS verifyCredentialsWithSuccessBlock:^(NSString *username) {
@@ -100,7 +101,19 @@ static NSString *const FaceBookAppID = @"";
                                                                         NSString *oAuthTokenSecret,
                                                                         NSString *userID,
                                                                         NSString *screenName) {
+
                                                                     NSLog(@"Token %@ secret %@ userID %@ screenName %@", oAuthToken, oAuthTokenSecret, userID, screenName);
+
+                                                                    [twitter profileImageFor:screenName successBlock:^(id image) {
+                                                                        dispatch_async(dispatch_get_main_queue(), ^{
+                                                                            self.oAuthTokenLabel.text = oAuthToken;
+                                                                            self.profileImageView.image = image;
+                                                                        });
+                                                                    } errorBlock:^(NSError *error) {
+
+                                                                    }];
+
+
                                                                 } errorBlock:^(NSError *error) {
                         NSLog(@"postReverseAuthAccessTokenWithAuthenticationHeader error %@", error.description);
                     }];
