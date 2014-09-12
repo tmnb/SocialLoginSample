@@ -8,6 +8,7 @@
 
 #import "AppDelegate.h"
 #import "FBAppCall.h"
+#import "ViewController.h"
 
 @interface AppDelegate ()
 
@@ -53,7 +54,41 @@
 
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation
 {
-    return [FBSession.activeSession handleOpenURL:url];
+    if ([url.scheme isEqualToString:@"fb691135414309579"]) {
+        return [FBSession.activeSession handleOpenURL:url];
+    }
+
+    if (![url.scheme isEqualToString:@"socialloginsample"]) {
+        return NO;
+    }
+
+    NSDictionary *dict = [self parametersDictionaryFromQueryString:url.query];
+
+    NSString *token = dict[@"oauth_token"];
+    NSString *verifier = dict[@"oauth_verifier"];
+
+    ViewController *vc = (ViewController *)[[self window] rootViewController];
+    [vc setOAuthToken:token oauthVerifier:verifier];
+
+    return YES;
+}
+
+- (NSDictionary *)parametersDictionaryFromQueryString:(NSString *)queryString
+{
+    NSDictionary *dict = @{};
+
+    NSArray *queryComponents = [queryString componentsSeparatedByString:@"&"];
+
+    for(NSString *string in queryComponents) {
+        NSArray *pair = [string componentsSeparatedByString:@"="];
+        if (pair.count != 2) {
+            continue;
+        }
+
+        dict = @{pair[0]:pair[1]};
+    }
+
+    return dict;
 }
 
 @end

@@ -20,6 +20,7 @@ static NSString *const TwitterConsumerSecret = @"";
 static NSString *const FaceBookAppID = @"";
 
 @interface ViewController () <UIActionSheetDelegate>
+@property (nonatomic) STTwitterAPI *twitterAPI;
 @property(nonatomic) NSArray *twitterAccounts;
 @property(weak, nonatomic) IBOutlet UIImageView *profileImageView;
 @property (weak, nonatomic) IBOutlet UILabel *oAuthTokenLabel;
@@ -43,6 +44,10 @@ static NSString *const FaceBookAppID = @"";
     ACAccountStore *accountStore = [[ACAccountStore alloc] init];
     ACAccountType *accountType = [accountStore accountTypeWithAccountTypeIdentifier:ACAccountTypeIdentifierTwitter];
 
+    self.twitterAPI = [STTwitterAPI twitterAPIWithOAuthConsumerName:nil
+                                                        consumerKey:TwitterConsumerKey
+                                                     consumerSecret:TwitterConsumerSecret];
+
     __weak typeof(self) weakSelf = self;
     [accountStore requestAccessToAccountsWithType:accountType
                                           options:NULL
@@ -51,6 +56,16 @@ static NSString *const FaceBookAppID = @"";
                                                if (granted) {
                                                    if ([accountStore accountsWithAccountType:accountType].count == 0) {
                                                        NSLog(@"Twitter account not found");
+
+                                                       [_twitterAPI postTokenRequest:^(NSURL *url, NSString *oauthToken) {
+                                                           [[UIApplication sharedApplication] openURL:url];
+                                                       } authenticateInsteadOfAuthorize:NO
+                                                               forceLogin:@(YES)
+                                                               screenName:nil
+                                                               oauthCallback:@"socialloginsample://twitter_social"
+                                                               errorBlock:^(NSError *error) {
+                                                                   NSLog(@"error %@", error.description);
+                                                               }];
                                                        return;
                                                    }
 
@@ -89,11 +104,7 @@ static NSString *const FaceBookAppID = @"";
 
 - (void)requestTwitterAuthAccessTokenWithAccount:(ACAccount *)account
 {
-    STTwitterAPI *twitter = [STTwitterAPI twitterAPIWithOAuthConsumerName:nil
-                                                              consumerKey:TwitterConsumerKey
-                                                           consumerSecret:TwitterConsumerSecret];
-
-    [twitter postReverseOAuthTokenRequest:^(NSString *authenticationHeader) {
+    [_twitterAPI postReverseOAuthTokenRequest:^(NSString *authenticationHeader) {
         STTwitterAPI *twitterAPIOS = [STTwitterAPI twitterAPIOSWithAccount:account];
         [twitterAPIOS verifyCredentialsWithSuccessBlock:^(NSString *username) {
             [twitterAPIOS postReverseAuthAccessTokenWithAuthenticationHeader:authenticationHeader
@@ -104,7 +115,7 @@ static NSString *const FaceBookAppID = @"";
 
                                                                     NSLog(@"Token %@ secret %@ userID %@ screenName %@", oAuthToken, oAuthTokenSecret, userID, screenName);
 
-                                                                    [twitter profileImageFor:screenName successBlock:^(id image) {
+                                                                    [_twitterAPI profileImageFor:screenName successBlock:^(id image) {
                                                                         dispatch_async(dispatch_get_main_queue(), ^{
                                                                             self.oAuthTokenLabel.text = oAuthToken;
                                                                             self.profileImageView.image = image;
@@ -123,6 +134,16 @@ static NSString *const FaceBookAppID = @"";
     } errorBlock:^(NSError *error) {
         NSLog(@"postReverseOAuthTokenRequest error %@", error.description);
     }];
+}
+
+- (void)setOAuthToken:(NSString *)token oauthVerifier:(NSString *)verifier
+{
+    [_twitterAPI postAccessTokenRequestWithPIN:verifier
+                                  successBlock:^(NSString *oauthToken, NSString *oauthTokenSecret, NSString *userID, NSString *screenName) {
+                                      NSLog(@"Token %@ secret %@ userID %@ screenName %@", oauthToken, oauthTokenSecret, userID, screenName);
+                                  } errorBlock:^(NSError *error) {
+                                      NSLog(@"error %@", error.description);
+                                  }];
 }
 
 - (IBAction)facebookLoginButtonTapped:(id)sender
