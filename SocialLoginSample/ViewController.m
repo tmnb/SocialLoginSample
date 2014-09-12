@@ -8,9 +8,11 @@
 
 #import "ViewController.h"
 
-#import "STTwitter.h"
 #import "Accounts/Accounts.h"
 #import "Social/Social.h"
+
+#import "STTwitter.h"
+#import "FacebookSDK.h"
 
 static NSString *const TwitterConsumerKey = @"";
 static NSString *const TwitterConsumerSecret = @"";
@@ -28,7 +30,6 @@ static NSString *const FaceBookAppID = @"";
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    // Do any additional setup after loading the view, typically from a nib.
 }
 
 - (void)didReceiveMemoryWarning
@@ -134,15 +135,30 @@ static NSString *const FaceBookAppID = @"";
         ACFacebookPermissionsKey : @[@"email"]
     };
 
+    __weak typeof(self) weakSelf = self;
+
     [accountStore requestAccessToAccountsWithType:accountType
                                           options:options
                                        completion:^(BOOL granted, NSError *error) {
                                            if (!granted) {
+                                               dispatch_async(dispatch_get_main_queue(), ^{
+                                                   [weakSelf facebookLogin];
+                                               });
                                                NSLog(@"error: %@", error.description);
                                                return;
                                            }
 
-                                           ACAccount *faceBookAccount = [accountStore accountsWithAccountType:accountType].lastObject;
+                                           NSArray *accounts = [accountStore accountsWithAccountType:accountType];
+
+                                           if (!accounts.count) {
+                                               NSLog(@"facebook account not found");
+                                               dispatch_async(dispatch_get_main_queue(), ^{
+                                                   [self facebookLogin];
+                                               });
+                                               return;
+                                           }
+
+                                           ACAccount *faceBookAccount = accounts.lastObject;
 
                                            SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeFacebook
                                                                                    requestMethod:SLRequestMethodGET
@@ -164,5 +180,59 @@ static NSString *const FaceBookAppID = @"";
                                        }];
 }
 
+- (void)facebookLogin
+{
+    if (FBSession.activeSession.state == FBSessionStateOpen || FBSession.activeSession.state == FBSessionStateOpenTokenExtended) {
+        [FBSession.activeSession closeAndClearTokenInformation];
+    }
+    else {
+
+            [FBSession openActiveSessionWithReadPermissions:@[@"public_profile", @"email"]
+                                               allowLoginUI:YES
+                                          completionHandler:
+                                                  ^(FBSession *session, FBSessionState state, NSError *error) {
+                                                      [self sessionStateChanged:session state:state error:error];
+                                                  }];
+    }
+}
+
+- (void)sessionStateChanged:(FBSession *)session state:(FBSessionState) state error:(NSError *)error
+{
+    if (!error && state == FBSessionStateOpen){
+        [FBRequestConnection startForMeWithCompletionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
+            NSLog(@"%@", [FBSession activeSession].accessTokenData.accessToken);
+            NSLog(@"%@", result);
+            NSString *userImageURL = [NSString stringWithFormat:@"https://graph.facebook.com/%@/picture?type=large", result[@"id"]];
+            NSLog(@"%@", userImageURL);
+        }];
+
+        return;
+    }
+
+    if (state == FBSessionStateClosed || state == FBSessionStateClosedLoginFailed){
+        NSLog(@"Session closed");
+        [FBSession.activeSession closeAndClearTokenInformation];
+    }
+
+    if (error){
+        NSLog(@"Error");
+        if ([FBErrorUtility shouldNotifyUserForError:error]){
+            NSLog(@"%@", [FBErrorUtility userMessageForError:error]);
+        }
+        else {
+            if ([FBErrorUtility errorCategoryForError:error] == FBErrorCategoryUserCancelled) {
+                NSLog(@"User cancelled login");
+            }
+            else if ([FBErrorUtility errorCategoryForError:error] == FBErrorCategoryAuthenticationReopenSession){
+                NSLog(@"%@", [FBErrorUtility userMessageForError:error]);
+            }
+            else {
+                NSDictionary *errorInformation = (error.userInfo)[@"com.facebook.sdk:ParsedJSONResponseKey"][@"body"][@"error"];
+                NSLog(@"%@", errorInformation[@"message"]);
+            }
+        }
+        [FBSession.activeSession closeAndClearTokenInformation];
+    }
+}
 
 @end

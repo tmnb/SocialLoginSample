@@ -211,8 +211,6 @@
 			mainGroup = 2628D0D319BE8C4F00A5A1B5;
 			productRefGroup = 2628D0DD19BE8C4F00A5A1B5 /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-			);
 			projectRoot = "";
 			targets = (
 				2628D0DB19BE8C4F00A5A1B5 /* SocialLoginSample */,
@@ -471,6 +469,7 @@
 				2628D0FE19BE8C4F00A5A1B5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		2628D0FF19BE8C4F00A5A1B5 /* Build configuration list for PBXNativeTarget "SocialLoginSampleTests" */ = {
 			isa = XCConfigurationList;
@@ -479,6 +478,7 @@
 				2628D10119BE8C4F00A5A1B5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
